@@ -1,15 +1,12 @@
 # Notification System Design
-
-# Stage 1
-
-Priority inbox - show top n unread notifications.
-
-Priority order: Placement > Result > Event. If same type, newer one comes first.
-
-Will add my approach here once stage 1 is done.
-
-# Stage 2
-
-Frontend app with all notifications page and priority page.
-
-Will update this after stage 2.
+## Stage 1
+# problem
+There are too many notifications and user cant see which ones are important.
+### priority logic
+Placement is most important, then Result, then Event.
+I gave each type a number - Placement=3, Result=2, Event=1. Sort by that number first. If two notifications have same type, the one with newer timestamp comes first.
+### unread
+Read notification ids are stored in a Set. Anything not in that set is unread. No database used.
+### new notifications coming in
+Right now i sort all notifications and take top 10. 
+If new ones keep coming, instead of sorting everything again we can keep the top 10 list and only check if the new notification is better than the last one in the list. If yes replace it. Saves time when there are lots of notifications.
