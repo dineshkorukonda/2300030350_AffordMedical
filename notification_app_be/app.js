@@ -8,8 +8,9 @@ const readIds = new Set();
 const TOP_N = 10;
 
 function getTopPriority(notifications, n) {
-  return notifications
-    .filter((item) => !readIds.has(item.ID))
+  const unread = notifications.filter((item) => !readIds.has(item.ID));
+
+  return unread
     .sort((a, b) => {
       const wA = WEIGHT[a.Type] || 0;
       const wB = WEIGHT[b.Type] || 0;
@@ -20,25 +21,47 @@ function getTopPriority(notifications, n) {
 }
 
 async function main() {
+  await Log("backend", "info", "handler", "stage 1 priority inbox started");
+
   if (!process.env.EVALUATION_TOKEN) {
+    await Log("backend", "error", "config", "EVALUATION_TOKEN not found in .env");
     throw new Error("EVALUATION_TOKEN missing in .env file");
   }
 
-  Log("backend", "info", "handler", "fetching notifications");
+  await Log("backend", "debug", "config", "env loaded, token is present");
+
+  await Log("backend", "info", "handler", "calling notifications api");
 
   const res = await fetch(API_URL, {
     headers: { Authorization: `Bearer ${process.env.EVALUATION_TOKEN}` },
   });
 
   if (!res.ok) {
-    Log("backend", "error", "handler", `api failed with ${res.status}`);
+    await Log("backend", "error", "handler", `notifications api returned status ${res.status}`);
     throw new Error(`API error: ${res.status}`);
   }
 
   const { notifications } = await res.json();
+
+  await Log(
+    "backend",
+    "info",
+    "handler",
+    `received ${notifications.length} notifications from api`
+  );
+
+  const unreadCount = notifications.filter((item) => !readIds.has(item.ID)).length;
+
+  await Log("backend", "debug", "utils", `${unreadCount} unread notifications before sorting`);
+
   const top = getTopPriority(notifications, TOP_N);
 
-  Log("backend", "info", "handler", `showing top ${TOP_N} notifications`);
+  await Log(
+    "backend",
+    "info",
+    "utils",
+    `sorted by Placement>Result>Event and picked top ${TOP_N}`
+  );
 
   console.log(`\nTop ${TOP_N} Priority Notifications\n`);
 
@@ -46,10 +69,17 @@ async function main() {
     console.log(`${i + 1}. [${item.Type}] ${item.Message}`);
     console.log(`   ${item.Timestamp}`);
   });
+
+  await Log(
+    "backend",
+    "info",
+    "handler",
+    `printed top ${top.length} priority notifications to console`
+  );
 }
 
-main().catch((err) => {
-  Log("backend", "fatal", "handler", err.message);
+main().catch(async (err) => {
+  await Log("backend", "fatal", "handler", err.message);
   console.error(err.message);
   process.exit(1);
 });
